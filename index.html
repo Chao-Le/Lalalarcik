@@ -1,0 +1,2544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LALALARчик</title>
+    <!-- PWA REQUIREMENTS -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#E75480"> <!-- You can change this hex code to match your new app's color -->
+    <link rel="apple-touch-icon" href="icon.png">
+    <style>
+        :root {
+            --primary: #CE82FF;
+            --success: #58CC02;
+            --error: #FF4B4B;
+            --bg: #F7F7F7;
+            --text: #3C3C3C;
+            --card-shadow: 0 4px 0 rgba(0,0,0,0.1);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Views */
+        .view {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .view.active { display: flex; }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 10px 0;
+            margin-bottom: 10px;
+        }
+        h1 { font-size: 24px; margin: 0; color: var(--text); }
+
+        /* Progress Dashboard */
+        .progress-dashboard {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr) auto;
+            gap: 8px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 12px;
+            border-radius: 16px;
+            border: 2px solid #E5E5E5;
+            text-align: center;
+        }
+        .stat-box { display: flex; flex-direction: column; }
+        .stat-label { font-size: 10px; color: #888; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; }
+        .stat-value { font-size: 16px; font-weight: 900; color: var(--primary); }
+
+        /* Dashboard Buttons */
+        #btn-go {
+            background-color: var(--success);
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 22px;
+            font-weight: bold;
+            border-radius: 16px;
+            box-shadow: 0 4px 0 #46a302;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 20px;
+            transition: transform 0.1s;
+        }
+        #btn-go:active { transform: translateY(2px); box-shadow: 0 2px 0 #46a302; }
+
+        .list-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            background: white;
+            border-radius: 16px;
+            border: 2px solid #E5E5E5;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; background: #fdfdfd; padding: 12px; border-bottom: 2px solid #E5E5E5; position: sticky; top: 0; }
+        td { padding: 12px; border-bottom: 1px solid #F0F0F0; }
+        tr:nth-child(even) { background-color: #FAFAFA; }
+        .score-pill {
+            background: #E5E5E5;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        /* Quiz UI */
+        .progress-bar {
+            height: 12px;
+            background: #E5E5E5;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        #progress-inner {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        #question-card {
+            flex-grow: 0;
+            min-height: 20vh; /* Reduced vertical height */
+            background: white;
+            border-radius: 24px;
+            border: 2px solid #E5E5E5;
+            box-shadow: var(--card-shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px; /* Reduced padding */
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: default;
+        }
+        #question-card.clickable { cursor: pointer; }
+        #question-card.correct { background: var(--success); color: white; border-color: var(--success); }
+        #question-card.wrong { background: var(--error); color: white; border-color: var(--error); }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .option-btn {
+            background: white;
+            border: 2px solid #E5E5E5;
+            border-radius: 16px;
+            padding: 16px;
+            font-size: 25px;
+            font-weight: bold;
+            color: var(--text);
+            cursor: pointer;
+            box-shadow: var(--card-shadow);
+            transition: all 0.1s;
+            text-align: center;
+        }
+        .option-btn.correct-alt { background: var(--success); color: white; border-color: var(--success); }
+        .option-btn.wrong-alt { background: var(--error); color: white; border-color: var(--error); }
+
+        /* Summary */
+        .summary-content {
+            text-align: center;
+            margin-top: 50px;
+        }
+        .big-score { font-size: 64px; font-weight: 900; color: var(--primary); margin: 20px 0; }
+        
+        /* Animations */
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <!-- VIEW 1: DASHBOARD -->
+    <div id="view-home" class="view active">
+        <header><h1>LALALARчик</h1></header>
+        
+        <div class="progress-dashboard">
+            <div class="stat-box"><span class="stat-label">1x</span><span class="stat-value" id="stat-1">0</span></div>
+            <div class="stat-box"><span class="stat-label">2x</span><span class="stat-value" id="stat-2">0</span></div>
+            <div class="stat-box"><span class="stat-label">3x</span><span class="stat-value" id="stat-3">0</span></div>
+            <div class="stat-box"><span class="stat-label">4x</span><span class="stat-value" id="stat-4">0</span></div>
+            <div class="stat-box"><span class="stat-label">5+</span><span class="stat-value" id="stat-5plus">0</span></div>
+<div class="stat-box" style="justify-content: flex-end; padding-bottom: 2px;">
+        <span class="stat-value" id="stat-total" style="color: #A0A0A0; font-size: 14px;">/0</span>
+    </div>
+        </div>
+
+        <button id="btn-go">GO!</button>
+        <div class="list-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Turkish</th>
+                        <th>Russian</th>
+                        <th style="text-align:center">Score</th>
+                    </tr>
+                </thead>
+                <tbody id="stats-body">
+                    <!-- JS Injected Rows -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- VIEW 2: QUIZ -->
+    <div id="view-quiz" class="view">
+        <div class="progress-bar"><div id="progress-inner"></div></div>
+        <div id="question-card">
+            <span id="question-text">Question</span>
+        </div>
+        <div class="options-grid" id="options-container">
+            <!-- JS Injected Buttons -->
+        </div>
+    </div>
+
+    <!-- VIEW 3: SUMMARY -->
+    <div id="view-summary" class="view">
+        <div class="summary-content">
+            <h2>Session Complete!</h2>
+            <div class="big-score" id="summary-score">8/10</div>
+            <p>Accuracy on first try</p>
+            <button id="btn-home" style="background: var(--primary); color:white; border:none; padding:15px; border-radius:12px; font-size:18px; width:100%; margin-top:20px; box-shadow: 0 4px 0 #a350e0;">Back to Home</button>
+        </div>
+    </div>
+
+    <script>
+        /** 1. DATA SETUP **/
+        const rawCSV = `
+bi',один/какой-то
+bok,дерьмо
+anlamadım,я не понял/а
+ki,что/же
+yaşamaktan,от жизни
+bugün,сегодня
+çoktan,уже давно
+dün,вчера
+olmuş,стал/а/о
+haberim,моё известие/знание
+yok,нет/отсутствует
+çalışmaktan,от работы
+borcum,мой долг
+bazen,иногда
+hayatta,в жизни
+tek,единственный/ая
+ihtiyacın,твоя нужда
+olan,являющийся/ая
+şey,вещь/что-то
+bir,один
+milyon,миллион
+dolardır,это доллар
+diken,колючка/шип
+içindeler,они внутри
+ama,но
+gül,роза
+gibiler,они подобны
+hapisteler,они в тюрьме
+şarap,вино
+balçık,тина/грязь
+gönül,душа/сердце
+her,каждый
+gün,день
+yerden,из места
+göçmek,кочевать/переезжать
+ne,как/что
+iyi,хороший/хорошо
+yere,в место
+konmak,приземляться/останавливаться
+güzel,красивый/ая/о
+bulanmadan,не мутнея
+donmadan,не замерзая
+akmak,течь
+hoş,приятный/о
+dünle,со вчерашним днем
+beraber,вместе
+gitti,ушел/ла/ло
+cancağızım,моя душенька
+kadar,до/столько
+söz,слово
+varsa,если есть
+düne,ко вчерашнему дню
+ait,относящийся/ая
+şimdi,сейчас
+yeni,новый/ая
+şeyler,вещи
+söylemek,сказать
+lazım,нужно
+içindeyiz,мы внутри
+gibiyiz,мы подобны
+hapisteyiz,мы в тюрьме
+gece,ночь
+sabah,утро
+tabancamın, моего пистолета
+sapını, (его) рукоятку
+gülle, розой
+donatacağım, я украшу
+alacağım, я возьму
+başka, другой/ая
+yar, возлюбленный/ая
+seveceğim, я буду любить
+yaşka, (по тексту) другой/ая
+seni, тебя
+çatlatacağım, я заставлю (тебя) лопнуть (от зависти)
+tabancam, мой пистолет
+dolu, полный/ый
+mermi, пуля
+seven, любящий/ая
+böyle, так
+eder, делает
+mi, ли (вопрос)
+sevdiği, которого он любит
+yari, возлюбленного/ую
+bırakır, оставляет
+da, и/тоже
+gider, уходит
+az, мало
+buz, лед
+değil, не
+tam, ровно/полный
+kırk, сорок
+yıldır, в течение (40) лет
+işerim, я мочусь
+yanlış, неправильный/ая
+duvara, на стену
+ben, я
+bıraksam, если я оставлю
+geçmiş, прошлое
+yakamı, мой воротник
+yakalar, ловит
+eti, его мясо
+kemiği, его кость
+aynı, тот же самый
+paylaşsak, если мы разделим
+kimi, кто-то
+şanslı, удачливый/ая
+doğuyor, рождается
+avucunu, свою ладонь
+yalıyor, лижет
+dere, ручей
+tepe, холм
+düz, прямой/о
+gittim, я шел/ушел
+yuvarlandım, я скатился
+bayır, склон
+aşağı, вниз
+doğruya, к правде
+jetonla, с жетоном
+geldim, я пришел
+yaşa, к возрасту
+çıkmayan, не выходящий/ая
+can, душа/жизнь
+çıkmıyor, не выходит
+hakkı, его право
+kere, раз
+sevdim, я полюбил
+obsesif, обсессивный
+gibi, как/подобно
+takılıp, зацепившись
+kalır, остается
+aklım, мой разум
+teoride, в теории
+tutar, держит
+pratik, практика
+apışıp, опешив
+gemi, корабль
+batarken, пока (он) тонет
+bizim, наш
+kaptanlar, капитаны
+önden, спереди/заранее
+sıvışır, ускользают
+biri, один из них
+saray, дворец
+açıyor, открывает
+kapısında, у его двери
+yatıyor, лежит/спит
+günler, дни
+bozuk, испорченный/мелкий (о деньгах)
+para, деньги
+hayat, жизнь
+dibi, его дно
+kumbara, копилка
+yıldızlar, звезды
+sönene, до того как погаснет
+parıldar, сияет
+olimpiyatta, на олимпиаде
+kürsüye, на пьедестал
+çıksak, если мы поднимемся
+takıyor, надевает
+avuncunu, (по тексту) свою ладонь
+kaygan, скользкий/ая
+ortam, среда/обстановка
+muhabbet, беседа
+bahane, предлог
+avcı, охотник
+av, охота/добыча
+peşinde, в погоне (за)
+yollu, доступный/ая
+yosmam, моя красотка
+hafif, легкий/ий
+hengamede, в суматохе
+kimin, чей
+eli, его рука
+cebinde, в его кармане
+loş, тусклый/ая
+ışıkta, в свету
+parlıyor, сияет
+ufukta, на горизонте
+bakışlar, взгляды
+haspam, (ирон.) эта особа
+gününde, в свой день
+tasmam, мой ошейник/поводок
+elinde, в его руке
+fink, (фразеол.) бегать туда-сюда
+atıyo, бросает/делает (разг.)
+yer, место/земля
+yerinde, на своем месте
+gel, приди/иди
+çal, укради/сыграй
+beni, меня
+vitrinden, из витрины
+cebine, в свой карман
+koy, положи
+koş, беги
+evine, в свой дом
+son, последний
+hız, скорость
+kedine, своей кошке
+sor, спроси
+yanımıza, к нам
+dolansın, пусть бродит
+o, он/она/оно
+yaramıza, на нашу рану
+pansuman, перевязка
+tutuşmak, загореться
+ıpıslak, совершенно мокрый
+ateşi, огонь (вин. падеж)
+grejuva, греческий огонь
+ilk, первый
+görüşte, во взгляде
+aşk, любовь
+kesin, точно
+ödüm, мой желчный пузырь/страх
+kopuyor, рвется/отваливается
+papatya, ромашка
+fallarında, в гаданиях
+yine, снова
+hazin, печальный/ый
+fırtına, буря
+karışıyor, смешивается
+kanıma, в мою кровь
+uçuyoruz, мы летим
+kafeste, в клетке
+ladeste, в споре «ладес»
+bizden, из нас
+köy, деревня
+olur, станет/бывает
+de, тоже/и
+kasaba, городок
+saman, солома
+alevi, его пламя
+ancak, только
+kuru, сухой/ая
+sıkı, плотный/холостой (патрон)
+boş, пустой/ой
+aradım, я искал
+taradım, я обыскал
+buldum, я нашел
+aldım, я взял
+başıma, на свою голову
+belayı, беду
+bokun, дерьма (р.п.)
+mavisine, в его синий цвет
+bastım, я нажал/поставил
+tüm, весь/вся
+parayı, деньги (в.п.)
+yapıp, сделав
+edip, сделав
+mecbur, вынужденный/о
+seçtim, я выбрал
+kara, черный/ая
+sevdayı, страсть/любовь
+yakmışım, я (оказывается) зажег
+abayı, (фразеол.) влюбился
+çocuk, ребенок
+oyuncağı, его игрушка
+tekin, безопасный (обычно с отрицанием)
+kanım, моя кровь
+donuyor, замерзает
+meksika, мексиканский
+açmazında, в его тупике
+karışıyo, смешивается (разг.)
+hem, и... и...
+evimsin, ты мой дом
+cehennemim, мой ад
+dört, четыре
+nala, галопом
+topal, хромой/ой
+dönerim, я возвращаюсь
+ister, хочет
+masallarda, в сказках
+anlatılanlar, то что рассказывают
+gerçek, реальный/правда
+olsun, пусть будет
+kısmet, судьба/удача
+herkes, каждый
+birine, к кому-то
+bağımlı, зависимый/ый
+ödüyor, платит
+kirasını, его аренду
+deprem, землетрясение
+yangın, пожар
+kanibal, людоед/каннибал
+aşkın, твоей любви
+labirent, лабиринт
+çekiyoz, мы тянем/терпим (разг.)
+sefasını, его удовольствие
+gülüşün, твой смех
+mutlak, абсолютный/ый
+sahibi, его хозяин
+öz, собственный
+irademin, моей воли
+uzaktan, издалека
+kumandasının, его пульта
+din, религия
+kursan, если ты создашь
+kul, раб
+olurum, я стану
+keyfin, твоё удовольствие
+keyfime, моему удовольствию
+kessin, пусть вырежет/назначит
+cezasını, его наказание
+kanunu, его закон
+gibisin, ты подобен/на
+arayan, ищущий
+eşsiz, уникальный/бесподобный
+belasını, свою беду
+kıçıyla, со своей задницей
+inatlaşan, упрямящийся
+donuna, в свои трусы
+sıçıp, нагадив
+yaşarmış, (оказывается) жил
+helasının, своего туалета
+balık, рыба
+pulu, его чешуя
+mutluluğun, твое счастье
+en, самый/ая
+huyum, мой характер/привычка
+kire, к грязи
+temiz, чистый/ый
+kalbe, к сердцу
+kriz, кризис
+zor, трудный/о
+seninle, с тобой
+sensizse, если же без тебя
+mümkün, возможный/о
+bile, даже
+cennet, рай
+girdap, вихрь/водоворот
+lanet, проклятие
+soru, вопрос
+sormayın, не спрашивайте
+bilmiyorum, я не знаю
+teşekkürler, спасибо
+servis, сервис/служба
+dışıyım, я снаружи (вне)
+birazcık, немножко
+anlayış, понимание
+lütfen, пожалуйста
+kısa, короткий/о
+keselim, давай отрежем/закончим
+abası, его одежда
+yolcu, путник
+yoluna, на свой путь
+varsın, пусть придет
+şekerlemeye, к дремоте
+döneyim, я вернусь
+şekerleme, дремота/сладость
+uzatmayalım, давай не будем удлинять
+yeterince, достаточно
+kurcaladıkça, по мере того как копаешься
+bozulur, портится
+eldekiler, то что в руках
+iyice, хорошенько
+inceldiği, там где истончилось
+kopsun, пусть порвется
+var, есть/существует
+aslanım, мой лев/храбрец
+tepetaklak, вверх тормашками
+hapın, твоя таблетка
+falan, и тому подобное
+ver, дай
+alıp, взяв
+unutalım, давай мы забудем
+adım, мое имя / шаг
+neydi, что это было
+nerdeyiz, где мы
+acık, (разг.) немного
+acınacak, жалкий/плачевный
+haldeyiz, мы в состоянии
+belki, может быть
+anda, в момент
+iki, два
+olamam, я не могу быть
+aynanda, (разг.) в тот же момент
+hep, всегда/все
+vereyim, давай я дам
+abime, моему брату
+tozu, его пыль
+cam, стекло
+tepside, на подносе
+yedikçe, по мере того как ешь
+acıkan, проголодавшийся
+metabolizman, твой метаболизм
+toplu, массовый/коллективный
+mezar, могила
+kazar, копает
+bütçeye, по бюджету
+göre, согласно
+mazi, прошлое
+çöp, мусор
+hard-diske, на жесткий диск
+yazık, жаль
+kentsel, городской
+dönüşüme, к трансформации/реновации
+dayanamayıp, не выдержав
+yuvasından, из своего гнезда
+sana, тебе
+yaslasa, если прислонит
+sırtını, свою спину
+dağ, гора
+sanıp, посчитав/подумав
+kapıyı, дверь (в.п.)
+çalmadan, не стуча/не воруя
+kalpleri, сердца
+göğe, в небо
+çıkar, подними
+boşluğa, в пустоту
+bırak, оставь
+he, (разг.) да/ага
+oldu, стало/получилось
+gözler, глаза
+doldu, наполнились
+kardo, (разг.) кореш
+göte, заднице
+göt, задница
+diyemeyenle, с тем кто не может сказать
+kadron, твой состав/кадры
+dönüş, возвращение
+bilet, билет
+yön, направление
+herro, (фразеол.) либо так
+merro, (фразеол.) либо эдак
+geliyoruz, мы идем
+yalınayak, босиком
+çivilere, на гвозди
+basa, наступая
+meçhul, неизвестный/ый
+yolun, пути (р.п.)
+mühim, важный/о
+kafa, голова
+rahat, спокойный/о
+iniyoruz, мы спускаемся
+ininize, в ваше логово
+kibrit, спичка
+suyu, его вода
+kökünüze, к вашему корню
+kaçarı, выход/спасение
+saklanaman, (разг.) ты не сможешь спрятаться
+kaçsan, если ты убежишь
+kenefine, в его нужник
+çekerim, я потяну/нажму
+sifonu, сифон/слив
+ellerimle, своими руками
+ulusal, национальный
+rejimi, его режим
+tiranlar, тираны
+hipokrasi, лицемерие
+donla, с трусами
+ayrılmaz, неразлучный
+eküri, напарник/команда
+esaretin, плена/рабства (род. падеж)
+türkçesi, его турецкий язык
+yerli, местный
+malı, его товар
+çin, китайский
+işkencesi, его пытка
+z kuşağına, поколению Z
+geçen, проходящий/прошлый
+gençliğin, молодости (род. падеж)
+telafisi, его компенсация
+daha, еще
+arkamız, наш тыл/за спиной
+kaldı, остался
+çığır, эпоха/путь
+açtı, открыл
+fiziğinde, в его физике
+birileri, кто-то (мн. ч.)
+mutsuz, несчастный
+olacak, будет
+illa, обязательно
+gülmek, смеяться
+yakışmıyor, не к лицу
+yapsın, пусть сделает
+fotoşop, фотошоп
+perileri, его феи
+mevsimi, его сезон
+uykum, мой сон
+kış, зима
+tahtım, мой трон
+yerle bir, сравнен с землей
+sıfır, ноль
+babayiğidin, храбреца/молодца (р.п.)
+alnını, его лоб
+karışlar, измеряет пядями
+tutup, поймав/держа
+kayıracak, будет протежировать/выделять
+kopyasız, без шпаргалок
+sınavmış, (оказывается) был экзамен
+yokluğun, твое отсутствие
+ömrüm, моя жизнь
+geçemez, не может пройти
+ölüm, смерть
+kayboldum, я потерялся
+tünelin, туннеля (род. падеж)
+ucuna, к его концу
+mum, свеча
+yaksan, если зажжешь
+kabusum, мой кошмар
+olsan, если будешь
+uyanmam, я не проснусь
+maskem, моя маска
+kayıp, потерянный/ая
+yüzüm, мое лицо
+içimdeki, находящийся внутри меня
+mahkeme, суд
+meğer, оказывается
+tutunacak, за что можно уцепиться
+teraneler, пустые разговоры/напевы
+yaşamaya, для жизни
+düştüm, я упал
+çukur, яма
+yokuş, подъем
+vuruş, удар
+taşla, камнем
+sürü, стадо/много
+kuş, птица
+geri, назад
+gitmemiş, не ушедший
+zaten, и так/уже
+beter, хуже
+gecelere, к ночам
+hacet, нужда
+dikmek, шить/воздвигать (тут: отбросить копыта)
+gerek, нужно
+naklen, в прямом эфире
+ülke, страна
+şifresiz, без пароля/кода
+korku, страх
+sağlıklı, здоровый
+yakın, близкий
+tımarhaneyi, психбольницу (вин. падеж)
+seçin, выберите
+çağrışımlar, ассоциации
+rezidans, резиденция
+bakım evi, дом престарелых
+deneyim, опыт
+müsait, свободный/удобный
+ineyim, давай я сойду
+peşkeş, подношение/подарок
+hortum, шланг/смерч (здесь: хищение)
+sakal, борода
+oh, ох (выражение удовольствия)
+ala, отличный/прекрасный
+memleket, родина/страна
+tutam, щепотка/горсть
+huzur, покой
+başı, его голова (здесь: уйти)
+yokmuş, (оказывается) нет
+talan, грабеж
+çırp, взбей/укради
+zart zurt, (звукоподр.) пустая болтовня
+vergisi, его налог
+sıcak, горячий
+çorba, суп
+mezatımız, наш аукцион
+başlamıştır, начался
+hayırlı, благополучный
+alışverişler, покупки/торговля
+sahibinden, от хозяина
+gümrük, таможня
+girişli, со входом
+kapalı, закрытый
+garaj, гараж
+aracı, его транспортное средство
+bizzat, лично
+kullandım, я использовал
+ciddi, серьезный
+alıcılar, покупатели
+arasın, пусть ищет/звонит
+dosta, к другу
+geleni, пришедшего
+üzmem, я не расстрою
+pazarlık, торг
+adettendir, это из обычая
+serüven, приключение
+uzun, длинный
+görece, относительно
+kilitli, запертый
+çekmece, ящик
+uçurum, обрыв
+düş, упади
+olup, будучи
+uç, лети
+sapıtır, сходит с ума
+ansızın, внезапно
+matem, траур
+dozer, бульдозер
+üzerinden, через/поверх
+ezer, давит
+geçer, проходит
+öğün, прием пищи
+hülya, мечта
+mutluymuş, (оказывается) был счастливым
+güya, якобы
+hayaldi, это была мечта
+distopya, дистопия
+haybeye, зря/впустую
+mesai, работа/смена
+şarampoldeyim, я в кювете
+yüküm, мой груз
+ağır, тяжелый
+yara, рана
+tuz gölü, соляное озеро
+kursağımdasın, ты в моем зобу/горле
+düğüm, узел
+neylesin, что ему делать
+meyilliyim, я склонен
+dem, время/настой (здесь: пить)
+çekmeye, к вдыханию/питью
+isyanlardayım, я в бунтах
+kahır, горе
+bela, беда
+uyandım, я проснулся
+filler, слоны
+kafamda, в моей голове
+akşamdan, с вечера
+kalmış, оставшийся
+fuhuşta, в разврате
+çivi, гвоздь
+sökerdi, вытаскивал бы
+forvet, форвард/нападающий
+zulamda, в моей заначке
+abla, сестра/обращение к женщине
+bayram, праздник
+vesile, повод
+hayrola, что случилось
+adem baba, Адам (отец Адам)
+bozdum, я нарушил/сломал
+yeminimi, мою клятву
+mecburen, вынужденно
+bindim, я сел (на транспорт)
+kestiğim, которого я срезал
+dala, на ветку
+daim, постоянно
+rötarda, в задержке
+marka, марка/бренд
+ağacım, мое дерево
+kel, лысый
+sokakta, на улице
+nerelerde, в каких местах
+simidim, мой спасательный круг
+hızlı, быстрый
+istiyorsan, если ты хочешь
+uzağa, вдаль
+istersen, если хочешь
+fazla, больше
+yamyam, людоед
+platonik, платонический
+orgazm, оргазм
+derin, глубокий
+yüzer, плавает
+iz, след
+bırakmaz, не оставляет
+zalım, (разг.) жестокий
+ip, веревка
+üstünde, на
+cambaz, акробат
+düşmez, не падает
+nafile, напрасно
+olta, удочка
+yem, приманка
+midede, в желудке
+jenerikte, в титрах
+kurban, жертва
+katile, к убийце
+aşık, влюбленный
+atla, прыгай
+mekiğime, в мой челнок
+gaza, на газ
+hop, гоп (междометие)
+hızına, к его скорости
+galaksi, галактика
+bulalım, давай мы найдем
+bize, нам
+nasıl olsa, в любом случае
+kasatura, штык-нож
+kazıkazan, лотерея (сотри и выиграй)
+tombala, лото
+ölürüz, мы умрем
+kendine, к самому себе
+trafik, трафик/пробки
+kilit, замок (здесь: заблокирован)
+tabanvay, (фразеол.) пешком
+keşmekeş, неразбериха
+köşebaşı, угол улицы
+olay, событие/происшествие
+milenyuma, к миллениуму
+denk, вровень/соответствующий
+gelmişiz, мы (оказывается) пришли
+dostlar, друзья
+amorti, утешительный приз
+piyangolar, лотереи
+ağlanacak, достойный плача
+halimiz, наше состояние
+çeker, тянет
+durur, стоит
+halay, халай (танец)
+ninja, ниндзя
+partisinde, на его вечеринке
+torbacılar, дилеры
+samuray, самурай
+eyvah, увы/ой-ой
+korteks, кортекс
+curcuna, суматоха
+dikeyler, вертикали
+artık, уже
+yatay, горизонталь
+prematüre, преждевременный
+adalete, к правосудию
+büyük, большой
+bekler, ждет
+gelsin, пусть придет
+dolunay, полнолуние
+cümleten, всем вместе/сообща
+merhaba, здравствуйте/привет
+okka, окка (старая мера веса)
+okkalı, весомый/солидный
+başlangıç, начало
+noktası, его точка
+dönüp, повернувшись/вернувшись
+baktığımızda, когда мы посмотрим
+evin, дома (род. падеж)
+yolunu, его путь
+bulabilelim, чтобы мы могли найти
+başkasını, другого (человека)
+bilmem, я не знаю
+nerde, где
+olursam olayım, где бы я ни был
+oradan, оттуда
+uzakları, дали/далекие места
+severim, я люблю
+kaybolmaya, к потере/исчезновению
+hemen, сразу/почти
+gidebilir, может пойти
+hiçbir, никакой
+dönmeyebilirim, я могу не вернуться
+ucu, его конец
+açık, открытый
+boşluktaki, находящийся в пустоте
+beş, пять
+yüz, сто
+milyar, миллиард
+yalnızca, только/лишь
+birinde, в одном (из них)
+alan, площадь/пространство
+alelade, заурядный/обычный
+sisteme, к системе
+bağlı, привязанный/зависимый
+yörüngesinde, на своей орбите
+süratle, со скоростью
+yaşlanan, стареющий
+gezegende, на планете
+neyiz, кто/что мы такие
+nası, (разг.) какой/как
+dümenin, штурвала/интриги (род. падеж)
+ihtimaller, вероятности
+okyanusunda, в его океане
+bilinmeyenli, с неизвестными
+denklemleriz, мы уравнения
+inananlar, верующие/верящие
+inandıranlar, заставляющие поверить
+inanmayanlar, неверующие
+tarihte, в истории
+satan, продающий
+kitaplar, книги
+giymesen, если ты не наденешь
+kokan, пахнущий/вонючий
+çoraplar, носки
+hepimiz, мы все
+her an, в любой момент
+tehlikedeyiz, мы в опасности
+başkalarının, других людей (род. падеж)
+mutsuzluğuyla, его несчастьем
+beslenen, питающийся
+canavarların, монстров (род. падеж)
+nesli, его поколение/род
+tükenene, до тех пор пока не исчерпается
+tekinsiz, небезопасный/зловещий
+zamanlar, времена
+icadı, его изобретение
+vakit, время
+nakit, наличные
+karta, на карту
+taksit, рассрочка
+bilir, знает
+kimlerin, чьих (людей)
+hedef, цель
+kitlesindeyiz, мы в его массе/аудитории
+saatler, часы
+vaatler, обещания
+saatli, с часовым механизмом
+bombalar, бомбы
+sıkışınca, когда прижмет/затруднится
+bütün, весь
+mahalleyi, квартал/район
+kundaklar, поджигает/пеленает
+yangından, от пожара
+kurtarılacak, который будет спасен
+adamlar, люди/мужчины
+tabii, конечно
+satıcının, продавца (род. падеж)
+alıcısı, его покупатель
+kapitalizmin, капитализма (род. падеж)
+müjdemi, мою благую весть
+isterim, я хочу
+arkadaşlar, друзья
+kölelik, рабство
+evvela, сначала/прежде всего
+kafada, в голове
+başlar, начинается
+kalmıştık, мы оставались
+bal, мед
+biliyoruz, мы знаем
+aslında, на самом деле
+önemli, важный
+sıralamada, в рейтинге/очереди
+kıl, волос
+payı, его доля/часть (тут: чуть-чуть)
+farkla, с разницей
+nefes, дыхание
+almaktan, от того чтобы брать (дышать)
+sonra, после
+gelir, приходит
+dile, к языку
+kolay, легкий
+vicdana, к совести
+kulağa, к уху
+gelmeyebilir, может не прийти
+doğan, рождающийся
+bebek, ребенок/младенец
+ölen, умирающий
+ekonomiye, к экономике
+verir, дает
+doğuştan, от рождения
+hakkımız, наше право
+olduğu, являющийся
+halde, в состоянии/несмотря на
+kapısından, от его двери
+girilen, в который входят
+adına, на его имя
+özgürlük, свобода
+denen, называемый
+müzayedede, на аукционе
+mafiş, (жарг.) ничего нет/пусто
+parçaları, его куски
+fahiş, непомерный/чрезмерный
+fiyatlara, по ценам
+satın, покупка
+alabilme, возможность взять/купить
+hakkına, к его праву
+erişebilmek, иметь возможность достичь
+çalış, работай
+baba, отец
+sürün, ползай/мучайся
+anam, моя мама
+boğul, задыхайся/тони
+ruhum, моя душа
+kaşık, ложка
+suya, в воду
+düşmeyi, падение (вин. падеж)
+borç, долг
+içinde, внутри
+öğrendik, мы выучили
+yüzmeyi, плавание (вин. падеж)
+hayatlarımıza, в наши жизни
+sular, воды
+indi, спустились
+sekiz, восемь
+hayallerinle, со своими мечтами
+helalleş, попрощайся/согласуйся
+ağlamak, плакать
+sadece, только
+çocukken, когда был ребенком
+işe, к работе
+yarayabilirdi, могло бы пригодиться
+yetti, хватило/достаточно
+batır, потопи
+gemileri, корабли
+kaçır, упусти/похить
+keçileri, коз (здесь: сойти с ума)
+çaktırmasam, если я не подам вида
+oralarda, в тех местах
+aldırmasam, если я не обращу внимания
+tilkiler, лисы
+dolaşıyor, бродит
+nerden, откуда
+bu, этот/эта/это
+hesapta, в расчете/в планах
+yoktu, не было/отсутствовал/о
+heyhat, увы
+girdik, мы вошли/ввязались
+topa, в мяч/в дело
+sonumuz, наш конец/наш финал
+çıldırmadıysam, если я не сошел/ла с ума
+karış, пядь
+havada, в воздухе
+kıpırdamasam, если я не шевельнусь
+kalbim, мое сердце
+atıyor, бьется
+taşlaşmış, окаменел/а/о
+hala, все еще
+sen, ты
+yazmazsan, если ты не напишешь
+değişmez, не изменится
+kader, судьба
+keyfekeder, как вздумается/по настроению
+ölü, мертвый
+balıklar, рыбы
+akıntıyı, течение (вин. падеж)
+takip, преследование/следование
+yattığında, когда ты ляжешь
+kurma, не заводи
+gülüyoruz, мы смеемся
+çürüyoruz, мы гнием
+evde, дома
+keyifler, удовольствия
+arazi, местность/поле (здесь: исчезли)
+anksiyete, анксиозность/тревога
+yasal, законный
+maganda, грубиян/быдло
+erekte, в эрекции
+ışık, свет
+memlekette, в стране
+gölgeler, тени
+firari, беглец
+denetimli, подконтрольный
+serbest, свободный
+kumpas, заговор/интрига
+kampüste, в кампусе
+manzara, вид/панорама
+ters, обратный
+kelepçe, наручники
+coğrafya, география
+porselen, фарфор
+kadehte, в бокале
+oksijende, в кислороде
+kampanya, кампания/акция
+çek, тяни/сними
+ödü, его плата
+merkez, центр
+körüklesin, пусть раздувает
+lokma, кусок
+et, мясо
+kurt, волк
+salya, слюна
+dese, если скажет
+koşar, бежит
+avuç, ладонь/горсть
+tuzla, с солью
+mafya, мафия
+şampiyon, чемпион
+kötüye, к плохому
+natürel, натуральный
+vay, вай (междометие)
+selam, привет
+kafamın, моей головы
+içindeki, находящийся внутри
+davetsiz, незваный
+öyle, так
+dururken, пока стоит
+radarım, мой радар
+taradı, просканировал
+buldu, нашел
+kötü, плохой
+körler, слепые
+sağırlar, глухие
+vasat, посредственный
+düzen, порядок
+vardı, был
+kurgu, вымысел/монтаж/сюжет
+hoşgeldin, добро пожаловать
+sofranın, стола (род. падеж)
+aç, голодный
+kurdu, его волк
+dar, узкий
+kestirmek, срезать/предположить
+ince, тонкий
+işleri, его дела
+perte, в утиль/в потери
+çıkıcaz, мы выйдем (разг.)
+yasla, прислони
+gündelik, ежедневный
+heveslerini, свои желания/увлечения
+tersten, задом наперед
+ders, урок
+izleri, его следы
+beyninde, в твоем мозгу
+çifter, парами
+dikişleri, его швы
+alıştık, мы привыкли
+yuvarlanıyoruz, мы катимся
+kelle, голова (животного/ирон.)
+koltukta, в кресле (здесь: под мышкой)
+sonrası, его после/последствие
+infial, негодование
+patlar, взорвется
+yolluklar, припасы в дорогу
+derde, к беде
+deva, лекарство
+anladık, мы поняли
+zamanlama, тайминг/выбор времени
+otumaya, (разг.) к сидению
+geldin, ты пришел
+lan, (разг.) блин/эй
+tosbağa, черепаха
+ağa, господин/хозяин
+inekleri, коров
+kim, кто
+sağa, доит
+havuz, бассейн
+problem, проблема
+gece gündüz, день и ночь
+kaçışlar, побеги
+tıkalı, закупоренный
+çıkışlar, выходы
+canım, мой дорогой/душа моя
+cicim, мой голубчик
+tatlı, сладкий
+aylar, месяцы
+virajda, на вираже
+yavaşlar, замедляется
+önce, сначала
+yalan, ложь
+söylemeye, к говорению
+güvenmemeye, к недоверию
+su, вода
+kaynattı, закипятил
+kabak, тыква (здесь: лысая шина)
+lastik, шина
+patinaj, пробуксовка
+elde, в руке
+sal, отпусти
+iradeyi, волю
+koltuğa, к креслу
+pantolonunu, свои брюки
+sıyır, засучи/сними
+tarih, история
+koca, огромный
+muamma, загадка/тайна
+yazar, пишет
+cehaletin, невежества (род. падеж)
+sıçtığı, (вульг.) в которое он наложил
+niyet, намерение
+cesaretle, с мужеством
+sıvanır, замазывается
+olasılıklar, вероятности
+çölde, в пустыне
+kum, песок
+sol, левый
+geçirdi, провел/захватил
+paranoyalar, паранойи
+beyin, мозг
+bedava, бесплатно
+biliyon mu, (разг.) ты знаешь
+zorla, силой
+milyonlar, миллионы
+zar, кость (игральная)
+tutulmadan, не будучи удержанным
+atılmaz, не бросается
+yek, один (в костях)
+zarar, вред/убыток
+şans, шанс/удача
+arar, ищет
+fakir, бедный
+götsüz, без задницы
+şipşak, моментальный
+şeridi, его лента
+malın, товара/имущества (род. падеж)
+birikir, накапливается
+omurilikte, в спинном мозгу
+kefenin, савана (род. падеж)
+cebi, его карман
+kara delik, черная дыра
+açılır, открывается
+gözün, твой глаз
+güneşin, солнца (род. падеж)
+altındayız, мы под (ним)
+bekliyoruz, мы ждем
+batsın, пусть зайдет/утонет
+yatçaz, мы ляжем (разг.)
+kalkcaz, мы встанем (разг.)
+nihayetinde, в конце концов
+velhasıl, короче говоря
+jantta, на диске (без шины)
+geldik, мы пришли
+yıllar, годы
+ensemizde, на нашем затылке
+kollar, руки (здесь: подстерегает)
+jurnal, донос/дневник
+çıldırmamak, не сойти с ума
+bari, хотя бы
+bre, брей (междометие)
+canlı, живой
+çıkamayacak, не сможет выйти
+virüsler, вирусы
+yanda, на стороне
+krupierler, крупье
+diğer, другой
+fişini, свою вилку/штекер
+çeksen, если ты вытянешь
+kalanlara, к оставшимся
+bedel, цена/расплата
+kaptan, капитан
+çöp tenekesinde, в мусорном баке
+inicem, я сойду (разг.)
+sarsma, не тряси
+dökülücem, я рассыплюсь (разг.)
+jöle, желе
+kıvamında, в консистенции
+akli, умственный
+dengem, мое равновесие
+halinden, от своего состояния
+memnun, довольный
+dışında, кроме/снаружи
+vatan, родина
+millet, нация
+as, повесь
+bayrakları, флаги
+boynuna, на свою шею
+düğün, свадьба
+yeri, его место
+cinayet, убийство
+mahali, его место
+güvendiğim, которому я доверяю
+dağları, горы
+bombala, бомби
+delik, дыра
+çıktı, вышел
+yelek, жилет
+kurşun, пуля
+geçirmez, непроницаемый
+felek, небо/судьба
+zaiyat, потери
+zaruri, необходимый
+yaşam, жизнь
+demek, значить
+ölümü, смерть (вин. падеж)
+beklemek, ждать
+tükenmez, неисчерпаемый (тут: шариковая ручка)
+kalem, ручка
+tükenicez, мы исчерпаемся/закончимся (разг.)
+direksiyonda, у руля
+istikamet, направление
+mahpus, узник
+çare, выход/средство
+kazdım, я копал
+tüneldeyim, я в туннеле
+yıkık, разрушенный
+hırsız, вор
+girsel, если бы вошел
+kaçar, убегает
+çıktım, я вышел
+tepsem, если я пройду (путь)
+baştayım, я в начале
+gökyüzünde, в небе
+yerin, земли (род. падеж)
+varken, пока есть
+hiç, совсем/никогда
+tadın, твой вкус
+talihin, удачи/судьбы (род. падеж)
+yaşlanmışız, мы состарились
+diğeri, другой
+gündüz, день
+kavuşmamız, наше воссоединение
+imkânsız, невозможный
+kalsam, если я останусь
+n'olur, (разг.) что будет
+gitsem, если я уйду
+yabancıyım, я чужак
+tutsam, если я поймаю/удержу
+altın, золото
+hata, ошибка
+göbek adım, (фразеол.) мое второе имя/прозвище
+tamamım, я цел/завершен
+yarım, половина
+dolmaktayım, я наполняюсь
+ağzımda, в моем рту
+kalmamış, (оказывается) не осталось
+dünyada, в мире
+hangi, какой
+şehre, в город
+kaçarsam kaçayım, в какой бы город я ни сбежал
+orası, то место
+yanlışlığın, ошибочности (род. падеж)
+başkenti, его столица
+köşeye, в угол
+mert, мужественный/честный
+şeytan, дьявол
+diyor, говорит
+kestirme, срез/короткий путь
+yak, сожги
+yoluna bak, смотри своей дорогой
+kırıkları, его обломки
+halı, ковер
+altına, под
+süpür, подмети
+gamı, печаль (вин. падеж)
+vicdan, совесть
+çıkmaz sokak, тупик
+ceketini, свою куртку/пиджак
+açıl, откройся
+susam, кунжут (здесь: Сезам)
+efsunlu, заколдованный
+yaram, моя рана
+kurtar, спаси
+buradan, отсюда
+memat, смерть
+dımdızlak, (фразеол.) голый/совершенно пустой
+pusuda, в засаде
+ipsiz, без веревки
+kaldım, я остался
+dipsiz, бездонный
+kuyuda, в колодце
+göründüm, я показался
+çevrende, в твоем окружении
+hepsi bu, это всё
+öylece, просто так
+kendince, по-своему
+kime ne, кому какое дело
+hani, дескать/как же
+koymadı, не задело/не расстроило
+yerlerde, в местах
+yalan olurdu, это было бы ложью
+özgürüm, я свободен
+şeritte, на полосе (дорожной)
+yalnız, одинокий/только
+mutlu, счастливый
+gittiğin, то что ты ушел
+çıkarmadan, не вынимая
+sigaramı, мою сигарету
+yürüdüm, я шел
+sessizce, тихо
+doğru, правильно/прямо (тут: по направлению к)
+yoksun, тебя нет
+burnumun, моего носа (род. падеж)
+dibinde, на его дне (совсем рядом)
+absürd, абсурдный
+bencilce, эгоистично
+isteğim, мое желание
+konuşmayı, речь (вин. падеж)
+unutacak, который забудет
+doyasıya, вдоволь
+kırmadan, не ломая/не обижая
+uğraşmadan, не стараясь/не хлопоча
+herkesi, каждого
+peyderpey, постепенно
+karanlığa, в темноту
+vakumlayan, засасывающий
+dönüştüğümü, то что я превращаюсь
+saklamak, прятать
+zorunda, в необходимости
+kalmadan, не оставаясь
+yarı, наполовину
+açıklama, объяснение
+yapmaktan, от делания
+yorucu, утомительный
+anlaşılması, то что его понимают
+müebbet, пожизненный
+girdabı, его водоворот
+dertler, беды/проблемы
+ekseriyetle, по большей части
+sessizlik, тишина
+nadiren, редко
+yalnızlık, одиночество
+paylaşılmaz, не разделяется
+savaşta, в войне
+tarafta, на стороне
+hatta, даже
+bulutun, облака (род. падеж)
+altında, под
+hedefe, к цели
+dalsak, если мы нырнем
+kamikazeler, камикадзе
+el ele, рука об руку
+uçmaz, не летает
+yaz, лето
+güneş, солнце
+açmaz, не открывается/не светит
+gönlümde, в моей душе
+tasfiye, ликвидация/чистка
+verdim, я дал
+maziye, прошлому
+kal, останься
+diyemedim, я не смог сказать
+gölgem, моя тень
+etmesin, пусть не делает
+olamayıp, не став
+olacağıma, вместо того чтобы стать
+iyie, (разг.) лучше
+enkaz, обломки/руины
+altı, под
+kahpe, подлый/шлюха
+sırtımda, на моей спине
+kah, то... (то...)
+azıcık, немножко
+damla, капля
+vazgeçmek, отказываться
+mahşer, Страшный суд
+mühürlü, запечатанный
+yakıyor, жжет
+sükut, молчание
+kerteriz, пеленг/ориентир
+bulur, находит
+oldum, я стал
+ek, приложение/дополнение
+seyir defterine, в судовой журнал
+küresel, глобальный
+kıyamet, апокалипсис
+kolektif, коллективный
+suçta, в вине/преступлении
+kümülatif, кумулятивный
+felaket, катастрофа
+mahkum, осужденный
+kadim, древний
+virüs, вирус
+insan, человек
+tanrılar, боги
+çıldırmış, (оказывается) сошли с ума
+olmalı, должно быть
+tapınaklar, храмы
+sihirli, волшебный
+değnekler, палочки
+iade, возврат
+tüketmeden, не потребляя/не исчерпав
+vitesini, свою передачу (в авто)
+küçültmeyen, не уменьшающий
+atalet, инерция/апатия
+pişen, варящийся
+boza, боза (напиток)
+ekosistem, экосистема
+sıçar, (вульг.) гадит
+deven, твой верблюд
+güt, паси
+keriz, (жарг.) простофиля
+üt, (жарг.) обдери
+gidişat, ход дел
+tırt, (жарг.) пустяк/никуда не годится
+simülasyon, симуляция
+terk, покинутый/брошенный
+takılmasın, пусть не цепляется
+akışına, по течению
+değişebilir, может измениться
+cinnete, к безумию/вспышке гнева
+bakar, смотрит (здесь: зависит от)
+kalanların, оставшихся
+yeter ki, лишь бы
+bilinmez, неизвестно
+ne zaman, когда
+sonu, его конец
+uyan, проснись
+uyu, спи
+ne diye, почему
+ömür boyu, в течение жизни
+alın, заберите
+verice'm, я дам (разг.)
+garantisi, его гарантия
+anlaşılıyor, понимается
+zamanla, со временем
+yuttuk, мы проглотили
+imitasyon, имитация
+hapı, таблетку
+uyduk, мы последовали
+kitaba, книге
+ahir, конец/загробный
+dedikleri, то что они называют
+avunc, ладонь/горсть
+yemi, его корм
+yollar, дороги
+denizde, в море
+fırtınada, в шторме
+liman, порт
+yaşıyor, живет
+ölüyor, умирает
+rüzgar, ветер
+nereden, откуда
+estiyse, если он дул
+rotan, твой маршрут
+pervane, пропеллер
+tayyare, самолет
+dengen, твое равновесие
+saplanmışsın, (оказывается) ты вонзился/застрял
+aklın, твой разум
+kimde, в ком
+kalbinde, в твоем сердце
+dakika, минута
+dur, стой
+düşün, подумай
+bak, смотри
+toprak, земля
+durmaz, не стоит
+döner, кружится
+durulmaz, не успокоится
+uymaz, не подходит/не совпадает
+terslik, неисправность/неправильность
+durdu, остановился
+akmaz, не течет
+baktıkça, по мере того как смотришь
+kayboluyor, исчезает
+göremiyorum, я не могу видеть
+uzandıkça, по мере того как тянешься
+uzaklaşıyor, отдаляется
+dokunamıyorum, я не могу прикоснуться
+bastıkça, по мере того как наступаешь
+kayıp düşüyor, поскользнувшись падает
+avucunu yalıyor,остается ни с чем
+doğruya doğru,правда есть правда
+çıkmayan can çıkmıyor,живучий/ая
+fink atıyo,разгуливает
+ödüm kopuyor,я в ужасе
+bile bile ladeste,сознательно идти на проигрыш
+kuru sıkı,холостой (выстрел)
+abayı yakmışım,я по уши влюбился/ась
+kısa keselim,давай покороче
+inceldiği yerden kopsun,где тонко там и рвется
+ne var ne yok,что нового
+ya herro ya merro,пан или пропал
+kibrit suyu kökünüze,чтоб вы провалились
+ali cengiz rejimi,режим интриг
+çığır açtı,совершил/а прорыв
+altın vuruş,решающий удар
+bir taşla bi sürü kuş,одним выстрелом стаю птиц
+nalları dikmek,отбросить копыта
+tapa gaz,на полном газу
+akşamdan kalmış,с похмелья
+çivi sökerdi çiviyi,клин клином вышибают
+bindiğim dala,сук на котором сижу
+el pençe divan,раболепно
+dile kolay,легко сказать
+keçileri kaçırmak,сойти с ума
+ters kelepçe,заламывание рук за спину
+körler sağırlar,глухие и слепые
+perte çıkıcaz,мы пойдем в утиль
+kelle koltukta,рискуя головой
+sen ağa ben ağa,оба господа
+elde var sıfır,в остатке ноль
+as bayrakları,вывешивай флаги
+aklımı kaçırdılar,свели меня с ума
+aklımızı çeliyor,сбивает нас с толку 
+dere tepe düz gittim,шел/ла за тридевять земель
+apışıp kalır,впадает в ступор
+kimin eli kimin cebinde,черт ногу сломит
+saman alevi,вспыльчивый/ая но отходчивый/ая
+meksika açmazında,в безвыходном тупике
+dört nala,во весь опор
+can evinde,в самое больное место
+aydın abası olsun,давай без лишних слов
+donla göt gibi,водой не разлить
+kulak arkamız kaldı,мы остались ни с чем
+alnını karışlar,бросает вызов
+tutup başı gitmek,уйти куда глаза глядят
+keçileri kaçır,сходи с ума
+yuttuk imitasyon hapı,мы повелись на обман
+duramıyorum, я не могу стоять 
+bi' bok anlamadım,я ни хрена не понял
+haberim yok,я не в курсе
+tek ihtiyacin olan,единственное в чём ты нуждаешься
+düne ait,относящийся/аяся ко вчера
+yeni şeyler,новые вещи
+tabancamın sapını,рукоятку моего пистолета
+gülle donatacağım,я украшу розами
+alacağım başka yar,я возьму другую любимую
+seni çatlatacağım,я заставлю тебя лопнуть
+tabancam dolu mermi,мой пистолет полон пуль
+kimi şanslı doğuyor,кто-то рождается удачливым/ой
+obsesif gibi,как одержимый/ая
+gemi batarken,пока корабль тонет
+kapısında yatıyor,лежит у его дверей
+bozuk para,мелкая монета
+dibi delik,с дырявым дном
+altın takıyor,надевает золото
+kaygan ortam,скользкая среда
+av peşinde,в погоне за добычей
+loş ışıkta,в тусклом свете
+hipnotik bakışlar,гипнотические взгляды
+tasmam elinde,мой поводок в твоей руке
+çal beni,укради меня (сыграй на мне)
+koş evine,беги в свой дом
+kedine sor,спроси у своей кошки
+yaramıza pansuman,перевязка на нашу рану
+ateşi yak,зажги огонь
+ilk görüşte,с первого взгляда
+altın kafeste,в золотой клетке
+bile bile,сознательно
+boş bi tabanca,пустой пистолет
+aradım taradım,я искал повсюду
+aldım başıma,навлек на свою голову
+tüm parayı,все деньги
+kara sevdayı,несчастную любовь
+yakmışım abayı,я безумно влюбился
+çocuk oyuncağı,детская игрушка
+kanım donuyor,моя кровь стынет
+gönül ister,душа хочет
+gerçek olsun,пусть будет правдой
+gülüşün mutlak sahibi,абсолютный владелец твоей улыбки
+uzaktan kumandasının,его пульта дистанционного управления
+kul olurum,я стану рабом
+en kötü huyum,моя самая плохая привычка
+hayat zor,жизнь трудна
+soru sormayın,не задавайте вопросов
+servis dışıyım,я вне обслуживания
+hayat kısa,жизнь коротка
+yaşamaya bahane ver,дай повод жить
+tepetaklak hayatın,твоя жизнь вверх тормашками
+her şeyi unutalım,давай забудем всё
+acınacak haldeyiz,мы в жалком состоянии
+aynı anda,одновременно
+iki yerde,в двух местах
+aynı yerdeyiz,мы в том же месте
+ne vereyim,что мне дать
+yıldız tozu,звездная пыль
+cam tepside,на стеклянном подносе
+acıkan metabolizman,твой голодающий метаболизм
+toplu mezar,братская могила
+her bütçeye,под любой бюджет
+hard-diske yazık,жаль жесткий диск
+kentsel dönüşüme,городскому преобразованию
+yuvasından yuvarlandı,скатился из своего гнезда
+kapıyı çalmadan,без стука в дверь
+kalpleri çal,укради сердца
+göğe çıkar,поднимись на небо
+boşluğa bırak,отпусти в пустоту
+gözler doldu,глаза наполнились
+doldu kadron,твоя команда заполнилась
+dönüş yok,возврата нет
+bilet tek yön,билет в один конец
+geliyoruz yalınayak,мы идем босиком
+çivilere basa basa,наступая на гвозди
+meçhul sonu,неизвестный конец
+yolun sonu,конец пути
+mühim olan,главное
+kafa rahat,спокойная голова
+iniyoruz ininize,мы спускаемся в ваше логово
+kaçarı yok,выхода нет
+kaçsan bile,даже если убежишь
+cehennemin kenefine,в сортир ада
+çekerim sifonu,я спущу воду
+ayrılmaz eküri,неразлучная парочка
+esaretin türkçesi,турецкий перевод рабства
+çin işkencesi,китайская пытка
+yerli malı,местный товар
+yok telafisi,нет компенсации
+geçen gençliğin,прошедшей молодости
+kulak arkamız,за нашим ухом
+mutlu olsun,пусть будет счастлив/а
+mutsuz olacak,будет несчастен/на
+gülmek bile,даже смеяться
+fotoşop perileri,феи фотошопа
+mevsimi değil,не его сезон
+uykum kış,мой сон зима
+tahtım yerle bir,мой трон сравнен с землей
+en babayiğidin,даже самого храброго
+beni mi kayıracak,неужели меня выделит
+kopyasız bi sınav,экзамен без шпаргалок
+ömür geçemez,моя жизнь не пройдет
+tünelin ucuna,к концу туннеля
+mum yaksan,если зажжешь свечу
+kabusum olsan,даже будь ты моим кошмаром
+maskem kayıp,моя маска потеряна
+yüzüm yok,мне стыдно
+içimdeki mahkeme,суд внутри меня
+bana dön,вернись ко мне
+gitmemiş olsan,если бы ты не уходил/а
+tutunacak teraneler,песни за которые можно уцепиться
+yuvarlandım yokuş,я скатился/лась под склон
+bir taşla,одним камнем
+günler zaten beter,дни и так хуже некуда
+gecelere ne hacet,к чему ночи
+rahat bi uyku,спокойный сон
+korku tüneli,туннель страха
+sağlıklı bi yaşam,здоровая жизнь
+tımarhaneyi seçin,выберите сумасшедший дом
+çağrışımlar rezidans,резиденция ассоциаций
+kırk yıllık deneyim,сорокалетний опыт
+müsait bi yerde,в удобном месте
+ne ala memleket,какая прекрасная страна
+bi tutam huzur,щепотка покоя
+yarın yokmuş gibi,как будто завтра нет
+sıcak bi çorba,горячий суп
+mezatımız başlamıştır,наш аукцион начался
+hayırlı alışverişler,хороших покупок
+ilk sahibinden,от первого владельца
+kapalı garaj,закрытый гараж
+ciddi alıcılar,серьезные покупатели
+dosta gider,подойдет для друга
+geleni üzmem,я не обижу пришедшего
+pazarlık adettendir,торг это традиция
+serüven uzun,приключение длинное
+kilitli çekmece,запертый ящик
+slalom parkur,слаломная трасса
+ister düş,хочешь упади
+ansızın matem,внезапный траур
+aynı hülya,та же фантазия
+mutluymuş güya,якобы счастливый
+hayaldi gerçek oldu,было мечтой стало реальностью
+haybeye mesai,напрасная сверхурочная работа
+yüküm ağır,мой груз тяжелый
+eksik olmasın,пусть не убудет
+bozdum yeminimi,я нарушил клятву
+kestiğim dala,на ветку которую я срезал
+her daim,всегда
+can simidim,мой спасательный круг
+hızlı gitmek,быстро идти
+uzağa gitmek,идти далеко
+yanlış yer,неправильное место
+derin yüzer,глубоко плавает
+ip üstünde,на веревке
+cambaz düşmez,акробат не упадет
+olta elde,удочка в руке
+atla mekiğime,прыгай в мой шаттл
+basalım gaza,давай нажмем на газ
+ışık hızına,до скорости света
+başka bir galaksi,другая галактика
+her yer ev,везде дом
+yazı tura,орел или решка
+trafik kilit,движение заблокировано
+denk gelmişiz,мы совпали
+yanlış milenyuma,в неправильное тысячелетие
+yaşamak çok zor,жить очень трудно
+ölmek fazla kolay,умереть слишком легко
+ağlanacak halimiz,наше плачевное положение
+prematüre adalete,преждевременному правосудию
+gelsin diye dolunay,чтобы пришло полнолуние
+cümleten merhaba,всем здравствуйте
+başlangıç noktası,начальная точка
+evin yolunu,дорогу домой
+nerde olursam,где бы я ни был/а
+uzakları severim,я люблю далекие края
+kaybolmaya meyilliyim,я склонен/на теряться
+her yere,в любое место
+ucu açık,с открытым концом
+yer alan,находящийся/аяся
+son süratle,на полной скорости
+ben kimim,кто я
+biz neyiz,кто мы
+dümenin içindeyiz,мы в каком-то заговоре
+ihtimaller okyanusunda,в океане вероятностей
+bilinmeyenli denklemleriz,мы уравнения со многими неизвестными
+bi şeye,во что-то
+en çok satan,самый продаваемый
+kokan çoraplar,вонючие носки
+nesli tükenene,пока не вымрет их род
+tekinsiz zamanlar,небезопасные времена
+insan icadı,изобретение человека
+vakit nakit,время деньги
+karta taksit,рассрочка на карту
+hedef kitlesindeyiz,мы в их целевой аудитории
+dijital saatler,цифровые часы
+başı sıkışınca,когда прижмет
+ilk kurtarılacak,кого спасут первым
+her satıcının,у каждого продавца
+payı büyük,доля велика
+müjdemi isterim,я хочу награду за благую весть
+evvela kafada,прежде всего в голове
+nerde kalmıştık,на чем мы остановились
+bal gibi,прекрасно (ясно понимать)
+önemli bi şey,важная вещь
+kıl payı,на волосок
+vicdana zor,трудно для совести
+hoş gelmeyebilir,может не понравиться на слух
+can verir,дает жизнь (или испускать дух)
+doğuştan hakkımız,наше право от рождения
+zor girilen,куда трудно войти
+özgürlük denen,так называемая свобода
+fahiş fiyatlara,по завышенным ценам
+çalış baba,работай папа
+sürün anam,мучайся мама
+boğul ruhum,задыхайся моя душа
+bir kaşık,одна ложка
+borç içinde,в долгах
+kara sular indi,сильно вымотался
+sabah sekiz,восемь утра
+hayallerinle helalleş,попрощайся со своими мечтами
+işe yarayabilirdi,могло бы сработать
+batır gemileri,топи корабли
+kaçır keçileri,сойди с ума
+sen yazmazsan,если ты не напишешь
+kader keyfekeder,судьба капризна
+ölü balıklar,мертвые рыбы
+akıntıyı takip,следовать по течению
+alarm kurma,не заводи будильник
+hoş beş,дружеская беседа
+çürüyoruz evde,мы гнием дома
+keyifler arazi,настроение улетучилось
+cirit atar,разгуливает вовсю
+ışık yok,света нет
+gölgeler firari,тени в бегах
+denetimli serbest,условно-досрочное освобождение
+kumpas kampüste,заговор в кампусе
+manzara bosphorus,вид на Босфор
+coğrafya kader,география это судьба
+porselen kadehte,в фарфоровом бокале
+şimdi çek,сними сейчас
+sonra öde,заплати потом
+oksijende kampanya,акция на кислород
+yangın var,пожар
+körüklesin herkes,раздувайте все
+son bir lokma,последний кусок
+yalnız kurt,одинокий волк
+demokrasi dese,если кто-то скажет демократия
+bi' avuç,горсть
+ne ilk,ни первый
+ne de son,ни последний
+davetsiz yolcu,незваный пассажир
+radarım taradı,мой радар просканировал
+vasat bir düzen,посредственный порядок
+ne oldu,что случилось
+tepetaklak oldu,перевернулось вверх дном
+aç kurdu,голодного волка
+vakit dar,время поджимает
+yol uzun,путь долгий
+hayat memat,вопрос жизни и смерти
+gündelik heveslerini,твои повседневные капризы
+tersten ders,обратный урок
+yara uçar,рана улетучится
+anı kalır,память останется
+bir adım sonrası,на один шаг вперед
+her derde deva,лекарство от всех бед
+oturmaya mı geldin,ты пришел/шла просто посидеть
+bu inekleri,этих коров
+havuz boş,бассейн пуст
+giriş çıkışlar,входы и выходы
+canım cicim,дорогой/ая мой/моя
+ilk virajda,на первом повороте
+yalan söylemeye,врать
+güvenmemeye başlar,начинает не доверять
+su kaynattı,закипел/а
+kabak lastik,лысая шина 
+sal iradeyi,отпусти волю
+koca bir muamma,большая загадка
+insan yazar,человек пишет
+kötü niyet,злой умысел
+çölde kum,песок в пустыне
+sol şeridi,левую полосу
+ele geçirdi,захватил/а
+beyin de bedava,мозг тоже бесплатный
+hep mi yek,неужели всегда единичка
+şans bizde,удача на нашей стороне
+fakir götsüz doğar,бедняк родится без задницы
+film şeridi,кинопленка
+malın fazlası,излишек имущества
+kefenin cebi,карман савана
+açılır gözün,откроется твой глаз
+güneşin altındayız,мы под солнцем
+yatçaz kalkcaz,поспим встанем
+öyle nihayetinde,в конечном итоге так
+buraya kadar,до этого момента
+yıllar ensemizde,годы у нас на затылке
+çıldırmamak elde değil,невозможно не сойти с ума
+rahat bırak,оставь в покое
+canlı çıkamayacak,не выберется живым
+bir yanda,с одной стороны
+kendi fişini çeksen,если сам выдернешь свою вилку
+fazla sarsma,не тряси слишком сильно
+akli dengem,мое душевное равновесие
+halinden memnun,довольный своим положением
+düğün yeri,место свадьбы
+cinayet mahalli,место убийства
+çek bakalım,ну-ка тяни
+güvendiğim dağları,горы на которые я полагался
+kurşun geçirmez,пуленепробиваемый
+yaşam demek,означает жить
+ölümü beklemek,ждать смерти
+tükenmez kalem,шариковая ручка
+istikamet merkez,направление центр
+mahpus içindeyim,я в тюрьме
+çare kazdım,я выкопал решение
+evim yıkık,мой дом разрушен
+hırsız girse,если вор зайдет
+en baştayım,я в самом начале
+yerin dibinde,под землей
+hiç tadım,совсем нет настроения
+peşinde yaşlanmışız,мы состарились преследуя
+kavuşmamız imkânsız,наша встреча невозможна
+kalsam n'olur,что если останусь
+kendime yabancıyım,я чужой для себя
+boşluğa dolmaktayım,я наполняю пустоту
+hiçbir şey yok,ничего нет
+tat kalmamış,вкуса не осталось
+koca dünyada,в этом огромном мире
+hangi şehre,в какой город
+yanlışlığın başkenti,столица ошибок
+yeni gün,новый день
+eski dert,старая беда
+dostlar sağ olsun,спасибо друзьям
+kendine mert,честен с собой
+şeytan diyor,дьявол говорит
+kestirme yol,короткий путь
+her şeyi yak,сожги всё
+köşe bucak,каждый уголок
+halı altına,под ковер
+vicdan diyor,совесть говорит
+açıl susam,сим-сим откройся
+efsunlu yaram,моя заколдованная рана
+kurtar beni,спаси меня
+dımdızlak pusuda,совершенно голый в засаде
+dipsiz kuyuda,в бездонном колодце
+belli belirsiz,едва заметный
+bırakıp gitmişsin,ты просто оставил и ушел
+derin bir yerlerde,где-то глубоко
+tek başıma,в одиночку
+nasıl oldu bu,как это произошло
+iyi oldu,это к лучшему
+yaktım sigaramı,я закурил сигарету
+burnumun dibinde,под моим носом
+ilk bakışta,с первого взгляда
+bencilce gelebilir,может показаться эгоистичным
+hayattan tek isteğim,мое единственное желание от жизни
+yalnız başına,в одиночестве
+mutsuz olmak,быть несчастным
+kimseyi kırmadan,никого не обижая
+gönül almakla,пытаясь задобрить
+sevdiği herkesi,всех кого любит
+karanlığa vakumlayan,засасывающий в темноту
+kara deliğe,в черную дыру
+zorunda kalmadan,без необходимости
+doya doya,вдоволь
+yarı açık,полуоткрытый/ая
+açıklama yapmaktan,чем давать объяснения
+yanlış anlaşılması,неправильное понимание
+muhabbet girdabı,вихрь разговоров
+dertler ekseriyetle,проблемы в большинстве своем
+sessizlik nadiren,тишина редко
+yalnızlık paylaşılmaz,одиночество не делится
+aynı savaşta,в той же войне
+aynı bulutun,под тем же облаком
+el ele uçmaz,не летают рука об руку
+güneş açmaz,солнце не светит
+yol verdim,я дал/а дорогу
+kal diyemedim,я не смог сказать останься
+gölge etmesin,пусть не заслоняет свет
+mutlu olamayıp,не имея возможности быть счастливым
+daha iyi,лучше
+enkaz altı,под обломками
+kahpe dünya,лживый мир
+sürünüyor ruhum,моя душа влачит существование
+beter haldeyim,я в худшем состоянии
+azıcık ışık,чуточку света
+bir damla,одна капля
+bir ihtimal,одна вероятность
+vazgeçmek ölüm,сдаться это смерть
+mahşer yeri,место страшного суда
+yüzyıllardır mühürlü,запечатанный веками
+yakıyor sükut,тишина обжигает
+düşünüyorum kerteriz,ищу точку опоры
+peşine düştüm,я погнался/лась
+nereye baksam,куда бы я ни посмотрел/а
+bulur oldum,я стал/а находить
+hata kodu,код ошибки
+küresel kıyamet,глобальный апокалипсис
+kolektif suçta,в коллективной вине
+kişi başına,на душу населения
+el mahkum,безвыходное положение
+en kadim,самый древний
+çıldırmış olmalı,должно быть сошли с ума
+tapınaklar boykot,бойкот храмов
+sihirli değnekler,волшебные палочки
+kendi neslini,свое собственное поколение
+vitesini hiç,ничуть не снижая передачу
+ensemizde pişen,варящийся у нас на затылке
+mavi ekran,синий экран
+güt köyünde,паси в своей деревне
+keriz buldun,нашел лоха
+gidişat tırt,дела идут паршиво
+simülasyon terk,покинутая симуляция
+takılmasın kafan,не забивай голову
+akışına bırak,отпусти на самотек
+olan olur,что будет то будет
+giden gider,кто уходит тот уходит
+cinnete bakar,зависит от безумия
+yarım kalanların,незаконченных
+yolun açık,счастливого пути (путь открыт)
+yola çık,отправляйся в путь
+bana göre değil,не для меня
+tasma taktıktan,после того как надел/а поводок
+aç ya da tok,сытый/ая или голодный/ая
+herkesten kaçtıktan,после побега от всех
+düşman ya da dost,враг или друг
+iyi hoş güzel,хорошо и красиво
+sığınmışsın ilaçlara,ты укрылся в лекарствах
+kurtuluş çıkmaz,спасение тупик
+uygun adım,в ногу
+ne kadar,сколько бы ни
+son damla,последняя капля
+tarifsiz bir adres,неописуемый адрес
+hacıyatmaz alabora,неваляшка опрокинулась
+olağanüstü hal,чрезвычайное положение
+üstünkörü bir,поверхностный/ая
+karşıki dağlarda,на противоположных горах
+içime atayım,я снова скрою в себе
+nedendir bilinmez,неизвестно почему
+her sabah uyan,просыпайся каждое утро
+sonraki nefesi,следующий вздох
+yok ki bi′,ведь нет никакой
+zamanla anlaşılıyor,со временем понимается
+imitasyon hapı,имитация таблетки
+uyduk bir kitaba,мы последовали книге
+kuş yemi,птичий корм
+denizde kum,песок в море
+fırtınada liman,гавань в бурю
+yalnız yaşıyor,живет в одиночку
+ne kadar kaçarsan,сколько бы ты ни бежал/а
+o kadar kovalar,столько и преследует
+hep ensende,всегда на затылке
+sevsen de sevmesen,любишь ты или нет
+nereye kadar,до каких пор
+neye yarar,какая польза
+her adımda,на каждом шагу
+sanma sakın,даже не думай
+gölgenden bile,даже твоей тени
+her uykuda,в каждом сне
+sana göre,по-твоему
+bana göre,по-моему
+göremez insan,человек не увидит
+ayna olmadan,без зеркала
+bi' dakika dur,постой минутку
+bastığın bu toprak,эта земля на которую ты ступаешь
+yerinde durmaz,не стоит на месте
+kafan döner,твоя голова кружится
+bir adımın,один твой шаг
+terslik olmalı,должна быть нестыковка
+zaman durdu,время остановилось
+baktıkça kayboluyor,теряется по мере того как смотришь
+tersine mi,наоборот ли
+rüzgar nereden,откуда ветер
+rotan karışmış,твой маршрут запутался
+kördüğüm olmuş,стал мертвым узлом
+küçük tayyare,маленький самолет
+dengen bozulmuş,твое равновесие нарушено
+kafan karışmış,твоя голова запуталась
+aklın kimde,у кого твой разум
+kalbin kimde,у кого твое сердце
+doğru söylesen,если скажешь правду
+yalan söylesen,если скажешь ложь
+kime kaç yazar,кого это волнует
+kimin umrunda,кого это заботит
+verdiğin sözler,данные тобой обещания
+yeminler etsen,даже если поклянешься
+bir sen,один ты
+beni kovalar,преследует меня
+içimde bir ben,внутри меня еще один я
+göz görse,даже если глаз видит
+asla kendini,никогда себя
+ay acaba,ах интересно
+rüyama daldılar,они погрузились в мой сон
+zihnime misafir,гости в моем разуме
+zamandan beri,с того времени
+dönmedi geri,не вернулся/лась назад
+aklıma taşındılar,переехали в мою голову
+moleküllerime doldular,наполнили мои молекулы
+mukayyet oldular,уберегли
+yarı zeki,наполовину умный/ая
+yarı deli,наполовину сумасшедший/ая
+rüya içinde,внутри сна
+rüyada uyandım,я проснулся/лась во сне
+uzay içinde,внутри космоса
+sabrımı taşırdılar,переполнили мое терпение
+aramıza giriyor,входит между нами
+türlü bilinmezlikler,всякие неизвестности
+apaçık görünmezlikler,очевидные невидимости
+bitmeyen sessizlikler,бесконечные молчания
+nerde yanlış,где не так
+yanlış yaptık,мы ошиблись
+arada sırada,время от времени
+yolumu sen mi,неужели ты мою дорогу
+yaramı sen mi,неужели ты мою рану
+ben mi abarttım,неужели я преувеличил/а
+akıl ermezdi,разум не постиг бы
+güneşi sen mi,неужели ты солнце
+içimi sen mi,неужели ты мою душу
+ömür yetmez,жизни не хватит
+kuş olup uç,стань птицей и лети
+`;
+
+        let dictionary = [];
+        let sessionQueue = [];
+        let sessionResults = { total: 0, firstTryCorrect: 0 };
+        let currentCard = null;
+        let isLocked = false; 
+
+        // SM-2 Constants
+        const DEFAULT_EFACTOR = 2.5;
+
+        /** 2. PERSISTENCE & PARSING **/
+        function initData() {
+            let saved = localStorage.getItem('flashcard_stats_lalalar');
+if (!saved) saved = localStorage.getItem('flashcard_stats'); // Rescue old data
+            const statsMap = saved ? JSON.parse(saved) : {};
+
+            dictionary = rawCSV.trim().split('\n').map(line => {
+                const [tr, en] = line.split(',').map(item => item.trim());
+                const stat = statsMap[tr] || {
+                    interval: 0,
+                    repetition: 0,
+                    efactor: DEFAULT_EFACTOR,
+                    correctCount: 0,
+                    nextReviewDate: 0
+                };
+                return { tr, en, ...stat };
+            });
+            renderDashboard();
+        }
+
+        function saveData() {
+            const statsMap = {};
+            dictionary.forEach(card => {
+                statsMap[card.tr] = {
+                    interval: card.interval,
+                    repetition: card.repetition,
+                    efactor: card.efactor,
+                    correctCount: card.correctCount,
+                    nextReviewDate: card.nextReviewDate
+                };
+            });
+            localStorage.setItem('flashcard_stats_lalalar', JSON.stringify(statsMap));
+        }
+
+        /** 3. SM-2 ALGORITHM **/
+        function updateSM2(card, quality) {
+            if (quality >= 3) {
+                if (card.repetition === 0) {
+                    card.interval = 1;
+                } else if (card.repetition === 1) {
+                    card.interval = 6;
+                } else {
+                    card.interval = Math.round(card.interval * card.efactor);
+                }
+                card.repetition++;
+                card.correctCount++;
+            } else {
+                card.repetition = 0;
+                card.interval = 1;
+            }
+
+            card.efactor = card.efactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+            if (card.efactor < 1.3) card.efactor = 1.3;
+
+            const now = Date.now();
+            card.nextReviewDate = now + (card.interval * 24 * 60 * 60 * 1000);
+        }
+
+        /** 4. TTS ENGINE **/
+        function speakTurkish(text) {
+            if (!window.speechSynthesis) return;
+            
+            window.speechSynthesis.cancel();
+            
+            const msg = new SpeechSynthesisUtterance();
+            msg.text = text;
+            msg.lang = 'tr-TR';
+            msg.rate = 0.95;
+            msg.volume = 1.0;
+
+            const voices = window.speechSynthesis.getVoices();
+            
+            let trVoice = voices.find(v => v.lang === 'tr-TR' && v.name.includes('Google')) ||
+                         voices.find(v => v.lang === 'tr-TR' && v.localService) ||
+                         voices.find(v => v.lang === 'tr-TR') ||
+                         voices.find(v => v.lang.startsWith('tr')) ||
+                         voices.find(v => v.name.toLowerCase().includes('turkish'));
+
+            if (trVoice) {
+                msg.voice = trVoice;
+                msg.lang = trVoice.lang;
+            }
+
+            window.speechSynthesis.speak(msg);
+        }
+
+        /** 5. UI CONTROLLERS **/
+        function switchView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        function renderDashboard() {
+            const tbody = document.getElementById('stats-body');
+            tbody.innerHTML = '';
+            
+            // Stats for the dashboard header
+            let counts = { 1: 0, 2: 0, 3: 0, 4: 0, "5+": 0 };
+
+            dictionary.forEach(card => {
+                // Update stats counts to be "at least X"
+        if (card.correctCount >= 1) counts[1]++;
+        if (card.correctCount >= 2) counts[2]++;
+        if (card.correctCount >= 3) counts[3]++;
+        if (card.correctCount >= 4) counts[4]++;
+        if (card.correctCount >= 5) counts["5+"]++;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${card.tr}</td>
+                    <td>${card.en}</td>
+                    <td style="text-align:center"><span class="score-pill">${card.correctCount}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Update header UI
+            document.getElementById('stat-1').innerText = counts[1];
+            document.getElementById('stat-2').innerText = counts[2];
+            document.getElementById('stat-3').innerText = counts[3];
+            document.getElementById('stat-4').innerText = counts[4];
+            document.getElementById('stat-5plus').innerText = counts["5+"];
+document.getElementById('stat-total').innerText = ' / ' + dictionary.length;
+        }
+
+        function startSession() {
+            const now = Date.now();
+            const DAY_MS = 24 * 60 * 60 * 1000;
+            
+            // 1. Separate into New, Due, and Future Review piles
+            let newPile = dictionary.filter(c => c.nextReviewDate === 0)
+                                    .sort(() => Math.random() - 0.5);
+
+            let dueReviews = dictionary.filter(c => c.nextReviewDate > 0 && c.nextReviewDate <= now)
+                                       .sort((a, b) => a.nextReviewDate - b.nextReviewDate);
+
+            let futureReviews = dictionary.filter(c => {
+                if (c.nextReviewDate <= now) return false;
+                
+                // Enforce the strict 24-hour lockout rule
+                // We calculate when it was last played based on the SM-2 interval
+                const lastPlayed = c.nextReviewDate - (c.interval * DAY_MS);
+                const timeSincePlayed = now - lastPlayed;
+                
+                // Only allow as a fallback if it's been at least 24 hours since last seen
+                return timeSincePlayed >= DAY_MS; 
+            }).sort((a, b) => a.nextReviewDate - b.nextReviewDate); // Sort closest to due first
+
+            // 2. Select initial targets (6 new, 4 review)
+            let selectedNew = newPile.splice(0, 6);
+            
+            let selectedReview = dueReviews.splice(0, 4);
+            
+            // Fallback: If less than 4 due, grab the closest future reviews
+            if (selectedReview.length < 4) {
+                const needed = 4 - selectedReview.length;
+                selectedReview = selectedReview.concat(futureReviews.splice(0, needed));
+            }
+
+            // 3. Balance to reach exactly 10 words if possible
+            let totalSelected = selectedNew.length + selectedReview.length;
+            
+            // If we lack reviews (e.g., brand new account), fill the rest with new words
+            if (totalSelected < 10 && newPile.length > 0) {
+                const needed = 10 - totalSelected;
+                selectedNew = selectedNew.concat(newPile.splice(0, needed));
+            }
+            
+            // If we lack new words (e.g., finished the dictionary), fill the rest with more reviews
+            totalSelected = selectedNew.length + selectedReview.length;
+            if (totalSelected < 10) {
+                const needed = 10 - totalSelected;
+                // Take from remaining due reviews first
+                const extraDue = dueReviews.splice(0, needed);
+                selectedReview = selectedReview.concat(extraDue);
+                
+                // If STILL need more, take from remaining unlocked future reviews
+                const stillNeeded = needed - extraDue.length;
+                if (stillNeeded > 0) {
+                    selectedReview = selectedReview.concat(futureReviews.splice(0, stillNeeded));
+                }
+            }
+
+            let selected = [...selectedNew, ...selectedReview];
+
+            // Edge case: User has literally played every valid card within the last 24 hours
+            if (selected.length === 0) {
+                alert("You've reviewed everything available! Come back in 24 hours to let your memory consolidate.");
+                return;
+            }
+
+            // 4. Final shuffle so new and review words are mixed up
+            sessionQueue = selected.sort(() => Math.random() - 0.5)
+                                   .map(card => ({ ...card, firstTry: true }));
+            
+            sessionResults.total = sessionQueue.length;
+            sessionResults.firstTryCorrect = 0;
+            
+            switchView('view-quiz');
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            if (sessionQueue.length === 0) {
+                showSummary();
+                return;
+            }
+
+            isLocked = false;
+            currentCard = sessionQueue[0];
+            const qCard = document.getElementById('question-card');
+            const qText = document.getElementById('question-text');
+            const optionsContainer = document.getElementById('options-container');
+
+            qCard.className = 'fade-in';
+            optionsContainer.innerHTML = '';
+
+            const isTrToEn = Math.random() > 0.5;
+            const questionValue = isTrToEn ? currentCard.tr : currentCard.en;
+            const correctValue = isTrToEn ? currentCard.en : currentCard.tr;
+            
+            qText.innerText = questionValue;
+
+            let distractors = dictionary
+                .filter(c => c.tr !== currentCard.tr)
+                .sort(() => 0.5 - Math.random())
+                .slice(0, 4)
+                .map(c => isTrToEn ? c.en : c.tr);
+            
+            let options = [...distractors, correctValue].sort(() => 0.5 - Math.random());
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = opt;
+                btn.onclick = () => handleAnswer(opt === correctValue, btn, isTrToEn);
+                optionsContainer.appendChild(btn);
+            });
+
+            updateProgressBar();
+        }
+
+        function handleAnswer(isCorrect, btn, isTrToEn) {
+            if (isLocked) return;
+            isLocked = true;
+
+            const qCard = document.getElementById('question-card');
+            const correctValue = isTrToEn ? currentCard.en : currentCard.tr;
+            
+            const buttons = document.querySelectorAll('.option-btn');
+            let correctBtn;
+            buttons.forEach(b => { if (b.innerText === correctValue) correctBtn = b; });
+
+            speakTurkish(currentCard.tr);
+
+            if (isCorrect) {
+                qCard.classList.add('correct');
+                btn.classList.add('correct-alt');
+                if (currentCard.firstTry) sessionResults.firstTryCorrect++;
+                
+                const originalInDict = dictionary.find(d => d.tr === currentCard.tr);
+                updateSM2(originalInDict, 5);
+                
+                sessionQueue.shift();
+            } else {
+                qCard.classList.add('wrong');
+                btn.classList.add('wrong-alt');
+                correctBtn.classList.add('correct-alt');
+                
+                const originalInDict = dictionary.find(d => d.tr === currentCard.tr);
+                updateSM2(originalInDict, 0);
+
+                currentCard.firstTry = false;
+                sessionQueue.shift();
+                sessionQueue.push(currentCard);
+            }
+
+            qCard.classList.add('clickable');
+            qCard.onclick = () => {
+                qCard.onclick = null;
+                qCard.classList.remove('clickable', 'correct', 'wrong');
+                nextQuestion();
+            };
+        }
+
+        function updateProgressBar() {
+            const totalInSession = sessionResults.total;
+            const finished = totalInSession - sessionQueue.filter(c => c.firstTry).length;
+            const percent = (finished / totalInSession) * 100;
+            document.getElementById('progress-inner').style.width = `${percent}%`;
+        }
+
+        function showSummary() {
+            saveData();
+            renderDashboard();
+            document.getElementById('summary-score').innerText = `${sessionResults.firstTryCorrect} / ${sessionResults.total}`;
+            switchView('view-summary');
+        }
+
+        /** 6. INIT **/
+        function loadVoices() {
+            window.speechSynthesis.getVoices();
+        }
+
+        window.onload = () => {
+            initData();
+            loadVoices();
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = loadVoices;
+            }
+        };
+
+        document.getElementById('btn-go').onclick = startSession;
+        document.getElementById('btn-home').onclick = () => switchView('view-home');
+
+    </script>
+    <!-- PWA SERVICE WORKER -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registered successfully.'))
+                    .catch(err => console.log('Service Worker registration failed: ', err));
+            });
+        }
+    </script>
+</body>
+</html>
