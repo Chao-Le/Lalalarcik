@@ -2428,6 +2428,8 @@ document.getElementById('stat-total').innerText = ' / ' + dictionary.length;
             sessionResults.total = sessionQueue.length;
             sessionResults.firstTryCorrect = 0;
             
+                history.pushState({page: 'quiz'}, '', '');  // ADD THIS LINE
+
             switchView('view-quiz');
             nextQuestion();
         }
@@ -2555,6 +2557,17 @@ document.getElementById('stat-total').innerText = ' / ' + dictionary.length;
                     .catch(err => console.log('Service Worker registration failed: ', err));
             });
         }
+// Handle Android back button
+window.addEventListener('popstate', function(event) {
+    const quizView = document.getElementById('view-quiz');
+    if (quizView.classList.contains('active')) {
+        // We're in quiz view - prevent closing and go back to home
+        event.preventDefault();
+        switchView('view-home');
+        // Push state again so back button works next time
+        history.pushState({page: 'home'}, '', '');
+    }
+});
     </script>
 </body>
 </html>
