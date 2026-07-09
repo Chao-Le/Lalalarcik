@@ -1190,7 +1190,6 @@ dese, если скажет
 koşar, бежит
 avuç, ладонь/горсть
 tuzla, с солью
-mafya, мафия
 şampiyon, чемпион
 kötüye, к плохому
 natürel, натуральный
@@ -2369,14 +2368,14 @@ document.getElementById('stat-total').innerText = ' / ' + dictionary.length;
 return timeSincePlayed >= (12 * 60 * 60 * 1000);
             }).sort((a, b) => a.nextReviewDate - b.nextReviewDate); // Sort closest to due first
 
-            // 2. Select initial targets (6 new, 4 review)
-            let selectedNew = newPile.splice(0, 6);
+            // 2. Select initial targets (5 new, 5 review)
+            let selectedNew = newPile.splice(0, 5);
             
-            let selectedReview = dueReviews.splice(0, 4);
+            let selectedReview = dueReviews.splice(0, 5);
             
-            // Fallback: If less than 4 due, grab the closest future reviews
-            if (selectedReview.length < 4) {
-                const needed = 4 - selectedReview.length;
+            // Fallback: If less than 5 due, grab the closest future reviews
+            if (selectedReview.length < 5) {
+                const needed = 5 - selectedReview.length;
                 selectedReview = selectedReview.concat(futureReviews.splice(0, needed));
             }
 
