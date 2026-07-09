@@ -2366,8 +2366,8 @@ document.getElementById('stat-total').innerText = ' / ' + dictionary.length;
                 const lastPlayed = c.nextReviewDate - (c.interval * DAY_MS);
                 const timeSincePlayed = now - lastPlayed;
                 
-                // Only allow as a fallback if it's been at least 24 hours since last seen
-                return timeSincePlayed >= DAY_MS; 
+// Only allow as a fallback if it's been at least 12 hours since last seen
+return timeSincePlayed >= (12 * 60 * 60 * 1000);
             }).sort((a, b) => a.nextReviewDate - b.nextReviewDate); // Sort closest to due first
 
             // 2. Select initial targets (6 new, 4 review)
